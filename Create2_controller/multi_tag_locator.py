@@ -1,14 +1,20 @@
-# locate a tag in a screen and tells its location by number
+# handle more than one tag in a screen
+# Currently not working
 
 import cv2
 import sys
 import time
+import numpy as np
+from matplotlib import pyplot as plt
 
 faceCascade = cv2.CascadeClassifier('classifier_3.xml')
 video_capture = cv2.VideoCapture(0)
 lastFoundTime = time.time()
 firstTime = True
 lastTag = 0, 0, 0, 0
+previouslyFound = False
+threshold = 0.9
+ROIfound = False
 
 def recordGrayVideo(cap):
     ret, frame = cap.read()
@@ -50,7 +56,7 @@ def isTagFound(tags):
 def averageTag(tag, lastTag):
     (x,w,y,h) = tag
     (lx,lw,ly,lh) = lastTag
-    if abs(x - lx) < abs(w-lw):
+    if abs(x - lx) < (w):
         return (x+lx)/2, (w+lw)/2, (y+ly)/2, (h+lh)/2
     else:
         return tag
@@ -90,30 +96,97 @@ def checkMarkerPos(tag, screen):
     if not up and not left:
         print '4'
 
+def makeROI(tag, screen):
+    (x,w,y,h) = tag
+    width, height = screen.shape
+    newX = x - w/4
+    newY = y - h/4
+    newW = w*3/2
+    newH = h*3/2
+    if newX < 0:
+        newX = 0
+    if newY < 0:
+        newY = 0
+    return screen[newY:newY+newH,newX:newX+newW], (newX,newW,newY,newH)
+
+def drawRect(rect, screen):
+    (x,w,y,h) = rect
+    cv2.rectangle(screen,(x,y),(x+w,y+h),(0,255,0),3)
+
+def makeTemplate(tag, screen):
+    (x,w,y,h) = tag
+    template = screen[x:x+w, y:y+h]
+    return template
+
+def adjustXY(tags, rect):
+    (x,w,y,h) = rect
+    for tag in tags:
+        tag[0] += x
+        tag[2] += y
+    return tags
+
+# find tag that has larger y value (located lower in the screen)
+def findLowerTag(tags):
+    largestY = 0
+    for (x,w,y,h) in tags:
+        if y > largestY:
+            largestY = y
+            (lx,lw,ly,lh) = (x,w,y,h)
+    return (lx,lw,ly,lh)
+
 
 while True:
     # Capture video
     gray, frame = recordGrayVideo(video_capture)
 
-    # detect tags
+    # Check if tag is found in previous frame.
+    # If so, find tags in the ROI
+    # if previouslyFound:
+    #     print "previously found"
+    #     tags = detectTag(ROI, faceCascade)
+    #     if isTagFound(tags):
+    #         previouslyFound = True
+    #         tags = adjustXY(tags, rect)
+    #         ROIfound = True
+    #     else:
+    #         previouslyFound = False
+    #         ROIfound = False
+    #         # find tags throughout the screen
+    #         tags = detectTag(gray, faceCascade)
+
+    # if not previouslyFound and not ROIfound:
+    #     print "not found"
+    #     # detect tags
+    #     tags = detectTag(gray, faceCascade)
     tags = detectTag(gray, faceCascade)
 
-    # record time previously found tag
     if isTagFound(tags):
         firstTime = False  # not first time to find tag
         lastFoundTime = time.time()
+        previouslyFound = True
         largestTag = findLargestTag(tags)
+        # lowestTag = findLowerTag(tags)
         tag = averageTag(largestTag, lastTag)
         lastTag = tag
         drawPoint(tag)
-        checkMarkerPos(tag, gray)
+        # checkMarkerPos(tag, gray)
+        # draw region of interest
+        ROI,rect = makeROI(tag, gray)
+        drawRect(rect, frame)
+        # make a tempalte for tempalte matching
+        # template = makeTemplate(tag, gray)
 
     # draw point if tag was found 0.4 sec ago
     elif (time.time() - lastFoundTime) < 0.6 and not firstTime:
+        previouslyFound = True
         drawPoint(tag)
-        checkMarkerPos(tag, gray)
+        # checkMarkerPos(tag, gray)
+        ROI,rect = makeROI(tag, gray)
+        drawRect(rect, frame)
 
     else:
+        previouslyFound = False
+        ROIfound = False
         print 'None'
 
     drawLine(frame)

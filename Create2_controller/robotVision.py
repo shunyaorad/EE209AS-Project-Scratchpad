@@ -1,13 +1,8 @@
-# 1st version of tag following robot
-# working prototype. However can't locate tag once its lost.
+# Simulate robot vision part. Robot motion not incorporated
+
 import cv2
 import sys
 import time
-import create2api
-
-bot = create2api.Create2()
-bot.start()
-bot.safe()
 
 faceCascade = cv2.CascadeClassifier('classifier_3.xml')
 video_capture = cv2.VideoCapture(0)
@@ -20,6 +15,9 @@ firstTime = True
 
 # last tag's location
 lastTag = 0, 0, 0, 0
+
+# Threshold time for using last found tag as current tag
+threshTime = 0.8
 
 def recordGrayVideo(cap):
     ret, frame = cap.read()
@@ -58,8 +56,11 @@ def isTagFound(tags):
     else:
         return False
 
-# Since usually AR tags have two points to be recognized
-# average the two points in the AR tag
+'''
+Since usually AR tags have two points to be recognized,
+average the two points in the AR tag. Current problem of 
+jumping dots between two tags still exist.
+'''
 def averageTag(tag, lastTag):
     (x,w,y,h) = tag
     (lx,lw,ly,lh) = lastTag
@@ -68,6 +69,11 @@ def averageTag(tag, lastTag):
     else:
         return tag
 
+'''
+Draw 3 lines on screen and divide the region into right, left, button.
+When tag is at right, robot turns right, and same for left. When tag is located below
+buttom line, it stops. Otherwise it moves forward.
+'''
 def drawLine(screen):
     (height, width, channel) = screen.shape 
     vertLeft = width/3
@@ -127,33 +133,21 @@ while True:
     if isTagFound(tags):
         firstTime = False  # not first time to find tag
         lastFoundTime = time.time()
-
-    # find largest tag
-    if isTagFound(tags):
+        # find largest tag
         largestTag = findLargestTag(tags)
         tag = averageTag(largestTag, lastTag)
         lastTag = tag
         drawPoint(tag)
-        moveRobot(tag, gray)
 
     # draw point if tag was found 0.4 sec ago
-    elif (time.time() - lastFoundTime) < 0.8 and not firstTime:
+    if (time.time() - lastFoundTime) < threshTime and not firstTime:
         drawPoint(tag)
-        moveRobot(tag, gray)
-
-    else:
-        print 'Stop'
-        bot.drive_straight(0)
-        bot.turn_clockwise(15)
-        time.sleep(1)
-        bot.turn_clockwise(0)
 
     drawLine(frame)
     # Display the resulting frame
     cv2.imshow('Video', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        bot.destroy()
         break
 # When everything is done, release the capture
 video_capture.release()
