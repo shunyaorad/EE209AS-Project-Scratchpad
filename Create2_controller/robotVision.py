@@ -123,7 +123,6 @@ def moveRobot(tag, screen):
 
 while True:
     # Capture video
-    bot.turn_clockwise(0)
     gray, frame = recordGrayVideo(video_capture)
 
     # detect tags
