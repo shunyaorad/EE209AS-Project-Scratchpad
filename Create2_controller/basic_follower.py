@@ -103,13 +103,13 @@ def moveRobot(tag, screen):
     if left:
         print 'Turn Left'
         bot.turn_clockwise(-15)
-        time.sleep(1)
-        bot.turn_clockwise(0)
+        # time.sleep(0.1)
+        # bot.turn_clockwise(0)
     if right:
         print 'Turn Right'
         bot.turn_clockwise(15)
-        time.sleep(1)
-        bot.turn_clockwise(0)
+        # time.sleep(0.1)
+        # bot.turn_clockwise(0)
     if not up:
         print 'Stop'
         bot.drive_straight(0)
@@ -117,8 +117,8 @@ def moveRobot(tag, screen):
 
 while True:
     # Capture video
-    bot.turn_clockwise(0)
     gray, frame = recordGrayVideo(video_capture)
+    bot.turn_clockwise(15)
 
     # detect tags
     tags = detectTag(gray, faceCascade)
@@ -127,26 +127,23 @@ while True:
     if isTagFound(tags):
         firstTime = False  # not first time to find tag
         lastFoundTime = time.time()
-
-    # find largest tag
-    if isTagFound(tags):
         largestTag = findLargestTag(tags)
         tag = averageTag(largestTag, lastTag)
         lastTag = tag
         drawPoint(tag)
-        moveRobot(tag, gray)
+        # moveRobot(tag, gray)
 
     # draw point if tag was found 0.4 sec ago
     elif (time.time() - lastFoundTime) < 0.8 and not firstTime:
         drawPoint(tag)
-        moveRobot(tag, gray)
+        # moveRobot(tag, gray)
 
     else:
         print 'Stop'
-        bot.drive_straight(0)
-        bot.turn_clockwise(15)
-        time.sleep(1)
-        bot.turn_clockwise(0)
+        # bot.drive_straight(0)
+        # bot.turn_clockwise(15)
+        # time.sleep(1)
+        # bot.turn_clockwise(0)
 
     drawLine(frame)
     # Display the resulting frame
