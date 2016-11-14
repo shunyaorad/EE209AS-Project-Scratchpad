@@ -113,7 +113,7 @@ def printClosestTag(tag, image):
 while True:
 	# refresh number of tags in the screen
 	tagsFound = [False, False, False, False, False, False]
-	# dict = {1:(0,0, False), 2:(0,0, False), 3:(0,0,False), 4:(0,0,False), 5:(0,0,False)}
+	dict = {1:(0,0, False), 2:(0,0, False), 3:(0,0,False), 4:(0,0,False), 5:(0,0,False)}
 
 	gray, image = recordGrayVideo(video_capture)
 	(height, width, channel) = image.shape 
@@ -140,7 +140,6 @@ while True:
 			if numberOfCircles > largestNumberOfCircles:
 				continue
 			tagsFound[numberOfCircles] = True
-			print numberOfCircles
 
 	cv2.imshow("Output", image)
 	if cv2.waitKey(1) & 0xFF == ord('q'):
