@@ -3,6 +3,7 @@
 import cv2
 import sys
 import time
+from math import *
 
 faceCascade = cv2.CascadeClassifier('classifier_3.xml')
 video_capture = cv2.VideoCapture(0)
@@ -21,7 +22,7 @@ def detectTag(img, cascade):
         scaleFactor=1.2,
         minNeighbors=30,
         minSize=(30, 30),
-        flags=cv2.cv.CV_HAAR_SCALE_IMAGE
+       # flags=cv2.cv.CV_HAAR_SCALE_IMAGE
     )
     return faces
 
@@ -37,7 +38,7 @@ def findLargestTag(tags):
 
 def drawPoint(tag):
     (x, w, y, h) = tag
-    cv2.circle(frame,(x+w/2,y+h/2), 10, (0,0,255), -1)
+    cv2.circle(frame, (floor(x+w//2), floor(y+h//2)), 10, (0,0,255), -1)
 
 def isTagFound(tags):
     if len(tags) > 0:
@@ -57,15 +58,15 @@ def averageTag(tag, lastTag):
 
 def drawLine(screen):
     (height, width, channel) = screen.shape 
-    midX = width/2
-    midY = height/2
+    midX = width//2
+    midY = height//2
     cv2.line(screen,(midX,0),(midX,height),(255,0,0),5)
     cv2.line(screen,(0,midY),(width,midY),(255,0,0),5)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(screen,'1',(midX/3,midY/2+30), font, 4,(255,255,255),2)
-    cv2.putText(screen,'2',(midX/3+330,midY/2+30), font, 4,(255,255,255),2)
-    cv2.putText(screen,'3',(midX/3,midY/2+280), font, 4,(255,255,255),2)
-    cv2.putText(screen,'4',(midX/3+330,midY/2+280), font, 4,(255,255,255),2)
+    cv2.putText(screen,'1',(midX//3,midY//2+30), font, 4,(255,255,255),2)
+    cv2.putText(screen,'2',(midX//3+330,midY//2+30), font, 4,(255,255,255),2)
+    cv2.putText(screen,'3',(midX//3,midY//2+280), font, 4,(255,255,255),2)
+    cv2.putText(screen,'4',(midX//3+330,midY//2+280), font, 4,(255,255,255),2)
 
 
 def checkMarkerPos(tag, screen):
@@ -82,13 +83,13 @@ def checkMarkerPos(tag, screen):
     else:
         left = False
     if up and left:
-        print '1'
+        print('1')
     if up and not left:
-        print '2'
+        print('2')
     if not up and left:
-        print '3'
+        print('3')
     if not up and not left:
-        print '4'
+        print('4')
 
 
 while True:
@@ -114,7 +115,7 @@ while True:
         checkMarkerPos(tag, gray)
 
     else:
-        print 'None'
+        print('None')
 
     drawLine(frame)
     # Display the resulting frame
