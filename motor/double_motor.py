@@ -40,30 +40,32 @@ class Motor:
         self.pwm_forward.ChangeDutyCycle(0)
         self.pwm_backward.ChangeDutyCycle(0)
 
+# both motors share the same PWM pin
 motor1 = Motor(7, 11, 12)
-motor2 = Motor(16, 18, 22)
+motor2 = Motor(16, 18, 12)
 
 # Motor 1 test
-motor1.forward(30)
-sleep(5)
-motor1.backward(30)
-sleep(5)
+motor1.forward(60)
+sleep(2)
+motor1.backward(60)
+sleep(2)
 motor1.stop()
 
 
 # Motor 2 test
-motor2.forward(30)
-sleep(5)
-motor2.backward(30)
-sleep(5)
+motor2.forward(60)
+sleep(2)
+motor2.backward(60)
+sleep(2)
 motor2.stop()
 
 # Running both
-motor1.forward(30)
-motor2.backward(30)
-sleep(5)
-motor1.forward(30)
-sleep(5)
+motor1.forward(60)
+motor2.forward(60)
+sleep(2)
+motor1.backward(60)
+motor2.backward(60)
+sleep(2)
 motor1.stop()
 motor2.stop()
 
