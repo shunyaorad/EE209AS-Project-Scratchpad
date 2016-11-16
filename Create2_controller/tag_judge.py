@@ -1,16 +1,11 @@
-# Judge which tag is closer
-# classifier method is not implemented
- 
+# Judge which tag is closer. Rely on edge detection
+
 import cv2
 import sys
 import time
 import operator
 
 video_capture = cv2.VideoCapture(0)
-faceCascade = cv2.CascadeClassifier('classifier_3.xml')
-lastFoundTime = time.time()
-firstTime = True
-lastTag = 0, 0, 0, 0
 cntsDrawn = False
 
 # contour parameter
@@ -45,17 +40,6 @@ def recordGrayVideo(cap):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return gray, frame
 
-def detectTag(img, cascade):
-    faces = cascade.detectMultiScale(
-        img,
-        scaleFactor=1.2,
-        minNeighbors=30,
-        minSize=(30, 30),
-        flags=cv2.cv.CV_HAAR_SCALE_IMAGE
-    )
-    return faces
-
-
 def getRectByPoints(points):
     # prepare simple array 
     points = list(map(lambda x: x[0], points))
@@ -78,10 +62,6 @@ def detectNumberOfCircles(img):
 	keypoints = detector.detect(img)
 	numberOfCircles = len(keypoints)
 	return numberOfCircles
-
-def printNumberOfCircles(numberOfCircles, img):
-	font = cv2.FONT_HERSHEY_SIMPLEX
-	cv2.putText(img, "Tag number: " + str(numberOfCircles),(10,400), font, 2,(255,255,255),2)
 
 def findContour(img):
 	edged = cv2.Canny(img, 10, 250)
