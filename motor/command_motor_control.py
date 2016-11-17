@@ -44,27 +44,27 @@ class Motor:
 motor1 = Motor(7, 11, 12)
 motor2 = Motor(16, 18, 12)
 
-
-while True:
-    cmd = raw_input("Command, a/s/w/x. a: right, s:left, w:both, x:stop")
-    if len(cmd) > 0:
-        motor = cmd[0]
-    if direction == "a":
-        print "right motor"
-        motor1.forward(60)
-        motor2.stop()
-    if direction == "s":
-        print "left motor"
-        motor2.forward(60)
-        motor1.stop()
-    if direction == "w":
-        print "both motor"
-        motor1.forward(60)
-        motor2.forward(60)
-    if direction == "x":
-        print "stopped"
-        motor1.stop()
-        motor2.stop()
+try:
+    while True:
+        cmd = raw_input("Command, a/s/w/x. a: right, s:left, w:both, x:stop")
+        if len(cmd) > 0:
+            motor = cmd[0]
+        if direction == "a":
+            print "right motor"
+            motor1.forward(60)
+            motor2.stop()
+        if direction == "s":
+            print "left motor"
+            motor2.forward(60)
+            motor1.stop()
+        if direction == "w":
+            print "both motor"
+            motor1.forward(60)
+            motor2.forward(60)
+        if direction == "x":
+            print "stopped"
+            motor1.stop()
+            motor2.stop()
 except KeyboardInterrupt:
     motor1.stop()
     motor2.stop()
