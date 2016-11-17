@@ -38,7 +38,7 @@ def findLargestTag(tags):
 
 def drawPoint(tag):
     (x, w, y, h) = tag
-    cv2.circle(frame, (floor(x+w//2), floor(y+h//2)), 10, (0,0,255), -1)
+    cv2.circle(frame, (x+w/2,y+h/2), 10, (0,0,255), -1)
 
 def isTagFound(tags):
     if len(tags) > 0:
@@ -63,10 +63,10 @@ def drawLine(screen):
     cv2.line(screen,(midX,0),(midX,height),(255,0,0),5)
     cv2.line(screen,(0,midY),(width,midY),(255,0,0),5)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(screen,'1',(midX//3,midY//2+30), font, 4,(255,255,255),2)
-    cv2.putText(screen,'2',(midX//3+330,midY//2+30), font, 4,(255,255,255),2)
-    cv2.putText(screen,'3',(midX//3,midY//2+280), font, 4,(255,255,255),2)
-    cv2.putText(screen,'4',(midX//3+330,midY//2+280), font, 4,(255,255,255),2)
+    cv2.putText(screen,'1',(midX/3,midY/2+30), font, 4,(255,255,255),2)
+    cv2.putText(screen,'2',(midX/3+330,midY/2+30), font, 4,(255,255,255),2)
+    cv2.putText(screen,'3',(midX/3,midY/2+280), font, 4,(255,255,255),2)
+    cv2.putText(screen,'4',(midX/3+330,midY/2+280), font, 4,(255,255,255),2)
 
 
 def checkMarkerPos(tag, screen):

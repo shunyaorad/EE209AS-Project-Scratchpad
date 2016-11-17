@@ -58,11 +58,11 @@ try:
             direction = cmd[0]
             speed = cmd[1:]
             if speed == "0":
-                vel = 50
+                vel = 80
             elif speed == "1":
-                vel = 60
+                vel = 90
             else:
-                vel = 70
+                vel = 99
         if direction == "a":
             print "right motor"
             motor1.forward(vel)

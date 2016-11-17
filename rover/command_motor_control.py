@@ -51,29 +51,37 @@ class Motor:
 motor1 = Motor(7, 11, 12)
 motor2 = Motor(16, 18, 12)
 
-# Motor 1 test
-motor1.forward(60)
-sleep(2)
-motor1.backward(60)
-sleep(2)
-motor1.stop()
+try:
+    while True:
+        cmd = raw_input("Command, a: right, s:left, w:both, x:stop:, speed:0, 1, 2: ")
+        if len(cmd) > 0:
+            direction = cmd[0]
+            speed = cmd[1:]
+            if speed == "0":
+                vel = 80
+            elif speed == "1":
+                vel = 90
+            else:
+                vel = 99
+        if direction == "a":
+            print "right motor"
+            motor1.forward(vel)
+            motor2.stop()
+        if direction == "s":
+            print "left motor"
+            motor2.forward(vel)
+            motor1.stop()
+        if direction == "w":
+            print "both motor"
+            motor1.forward(vel)
+            motor2.forward(vel)
+        if direction == "x":
+            print "stopped"
+            motor1.stop()
+            motor2.stop()
 
-
-# Motor 2 test
-motor2.forward(60)
-sleep(2)
-motor2.backward(60)
-sleep(2)
-motor2.stop()
-
-# Running both
-motor1.forward(60)
-motor2.forward(60)
-sleep(2)
-motor1.backward(60)
-motor2.backward(60)
-sleep(2)
-motor1.stop()
-motor2.stop()
-
-GPIO.cleanup()
+except KeyboardInterrupt:
+    motor1.stop()
+    motor2.stop()
+    print "\nkeyboard interrupt, stopped"
+    GPIO.cleanup()
