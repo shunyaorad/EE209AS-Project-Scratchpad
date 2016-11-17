@@ -46,25 +46,33 @@ motor2 = Motor(16, 18, 12)
 
 try:
     while True:
-        cmd = raw_input("Command, a/s/w/x. a: right, s:left, w:both, x:stop")
+        cmd = raw_input("Command, a: right, s:left, w:both, x:stop:, speed:0, 1, 2: ")
         if len(cmd) > 0:
-            motor = cmd[0]
+            direction = cmd[0]
+            speed = cmd[1:]
+            if speed == "0":
+                vel = 50
+            elif speed == "1":
+                vel = 60
+            else:
+                vel = 70
         if direction == "a":
             print "right motor"
-            motor1.forward(60)
+            motor1.forward(vel)
             motor2.stop()
         if direction == "s":
             print "left motor"
-            motor2.forward(60)
+            motor2.forward(vel)
             motor1.stop()
         if direction == "w":
             print "both motor"
-            motor1.forward(60)
-            motor2.forward(60)
+            motor1.forward(vel)
+            motor2.forward(vel)
         if direction == "x":
             print "stopped"
             motor1.stop()
             motor2.stop()
+
 except KeyboardInterrupt:
     motor1.stop()
     motor2.stop()
