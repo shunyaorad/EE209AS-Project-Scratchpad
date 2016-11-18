@@ -1,5 +1,4 @@
-# create2 move to the nearest tag
-# Tag record algorithm implemented
+# create2 extracts and executes instruction from each tag
 
 import cv2
 import sys

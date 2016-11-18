@@ -12,7 +12,7 @@ params = cv2.SimpleBlobDetector_Params()
 
 # Change thresholds
 params.minThreshold = 10
-params.maxThreshold = 100
+params.maxThreshold = 40
 
 # Filter by Area.
 # params.filterByArea = True
@@ -20,11 +20,11 @@ params.maxThreshold = 100
 
 # Filter by Circularity
 params.filterByCircularity = True
-params.minCircularity = 0.8
+params.minCircularity = 0.7
 
 #Filter by Convexity
-params.filterByConvexity = True
-params.minConvexity = 0.9
+# params.filterByConvexity = True
+# params.minConvexity = 0.9
     
 # Filter by Inertia
 params.filterByInertia = True
