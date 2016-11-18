@@ -137,7 +137,7 @@ class TetheredDriveApp(Tk):
     # Whether it blocks is based on how the connection was set up.
     def getDecodedBytes(self, n, fmt):
         global connection
-        
+
         try:
             return struct.unpack(fmt, connection.read(n))[0]
         except serial.SerialException:
@@ -212,7 +212,7 @@ class TetheredDriveApp(Tk):
             elif k == 'RIGHT':
                 self.callbackKeyRight = False
                 motionChange = True
-            
+
         if motionChange == True:
             velocity = 0
             velocity += VELOCITYCHANGE if self.callbackKeyUp is True else 0
@@ -247,7 +247,8 @@ class TetheredDriveApp(Tk):
         if port is not None:
             print "Trying " + str(port) + "... "
             try:
-                connection = serial.Serial(port, baudrate=115200, timeout=1)
+                #connection = serial.Serial(port, baudrate=115200, timeout=1)
+                connection = serial.Serial(port, baudrate=19200, timeout=1)
                 print "Connected!"
                 tkMessageBox.showinfo('Connected', "Connection succeeded!")
             except:
@@ -292,7 +293,7 @@ class TetheredDriveApp(Tk):
                 result.append(port)
             except (OSError, serial.SerialException):
                 pass
-        return result    
+        return result
 
 if __name__ == "__main__":
     app = TetheredDriveApp()

@@ -69,7 +69,7 @@ def averageTag(tag, lastTag):
         return tag
 
 def drawLine(screen):
-    (height, width, channel) = screen.shape 
+    (height, width, channel) = screen.shape
     vertLeft = width/3
     vertRight = width*2/3
     bottom = height*4/5
@@ -79,7 +79,7 @@ def drawLine(screen):
     font = cv2.FONT_HERSHEY_SIMPLEX
 
 def moveRobot(tag, screen):
-    (height, width) = screen.shape 
+    (height, width) = screen.shape
     vertLeft = width/3
     vertRight = width*2/3
     bottom = height*4/5
