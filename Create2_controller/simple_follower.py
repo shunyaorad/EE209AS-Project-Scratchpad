@@ -1,4 +1,5 @@
 # create2 move to the nearest tag
+# Tag record algorithm implemented
 
 import cv2
 import sys
@@ -6,29 +7,35 @@ import time
 import operator
 import create2api
 
+# video parameters ########################################
 video_capture = cv2.VideoCapture(0)
 cntsDrawn = False
 font = cv2.FONT_HERSHEY_SIMPLEX
 
-bot = create2api.Create2()
-bot.start()
-bot.safe()
+# connect to robot##########################################
+# on command line, if command is robot, connect to robot.
+# otherwise debug mode without robot connection
+robotMode = False
+if len(sys.argv) == 1:
+	cmd = 'debug'
+else:
+	cmd = sys.argv[1]
+if cmd == 'robot':
+	robotMode = True
+else:
+	robotMode = False
+if robotMode:
+	bot = create2api.Create2()
+	bot.start()
+	bot.safe()
 
-# contour parameter
+# contour parameter####################################################
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
 smallest_area = 10000
 largest_area = 50000
 largestNumberOfCircles = 5
 
-# Dictionary to store (y, x, tagFound) coordinates of each tag
-# initial coordinate is (0,0,False)
-inf = 0
-dict = {1:(inf, inf, False), 2:(inf, inf, False), 3:(inf, inf, False), \
-4:(inf, inf, False), 5:(inf, inf, False)}
-largestY = 0
-lastRects = []
-
-# Setup SimpleBlobDetector parameters.
+# SimpleBlobDetector parameters########################################
 params = cv2.SimpleBlobDetector_Params()
 params.minThreshold = 10
 params.maxThreshold = 100
@@ -40,7 +47,6 @@ params.filterByInertia = True
 params.minInertiaRatio = 0.01
 detector = cv2.SimpleBlobDetector(params)
 maxNumberOfcircles = 0
-lastCircleTime = time.time()
 
 # Tag setup ############################################################
 class Tag:
@@ -55,21 +61,25 @@ class Tag:
 		self.found 		= found
 
 	# reuturn distance of the tag from the robot
-	def distance():
+	def distance(self):
 		# distance from the tag to the bottom center of the screen
 		distance = ((self.x - screenWidth/2)**2 + (self.y - screenHeight)**2)**0.5
 		distance = int(round(distance))
 		return distance
 
 # initialize tags
-numberOfTags = 3
 inf = 0 # inf means that tag distance is farthest
 tag1 = Tag(1, inf, inf, "room A", [2, 10], 2, False)
 tag2 = Tag(2, inf, inf, "room B", [5, 10, 5, 10], 3, False)
 tag3 = Tag(3, inf, inf, "room C", [5, 10, 5], 1, False)
 allTags = [tag1, tag2, tag3]
+numberOfTags = len(allTags)
 
+# tag record algorithm parameters ########################################
+timeFoundLast = 0
+delay = 3
 
+##########################################################################
 def recordGrayVideo(cap):
     ret, frame = cap.read()
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -116,12 +126,12 @@ def centerOfRect(rect):
 	return x, y
 
 def printTagInfo(tag, rect, image):
-	cv2.putText(image, str(numberOfCircles) + ": " + \
+	cv2.putText(image, str(tag.tagID) + ": " + \
 		str("(%d, %d)"%(tag.x, tag.y)), (rect[2],rect[0]), font, 1,(255,255,255),2)
 
 def printNearestTag(tag):
 	cv2.putText(image, "closest: " + \
-		str(tag.tagID),(screenWidth/3, screenHeight * 5/6), font, 1,(255,0,0),2)
+		str(tag.tagID),(screenWidth/3, screenHeight * 5/6), font, 1,(0,0,255),2)
 
 def printCenter(tag):
 	 cv2.circle(image, (tag.x, tag.y), 10, (0,0,255), -1)
@@ -148,6 +158,7 @@ def judgePosition(tag):
 	return [up, left, right, middle]
 
 def findTags(img):
+	global timeFoundLast
 	contours = findContour(gray)
 	# reset all tag information
 	tags = []
@@ -162,8 +173,6 @@ def findTags(img):
 		approx, area = approximateCnt(c)
 		if len(approx) < 5 and len(approx) > 3 and area > smallest_area and area < largest_area:
 			firstTime = False
-			lastFoundTime = time.time()
-			lastRects.append(approx)
 			cv2.drawContours(image, [approx], -1, (0, 255, 0), 4)
 			rect = getRectByPoints(approx)
 			ROI = getPartImageByRect(rect, gray)
@@ -171,6 +180,7 @@ def findTags(img):
 			numberOfCircles = len(keypoints)
 			if numberOfCircles > numberOfTags or numberOfCircles == 0:
 				continue
+			timeFoundLast = time.time()
 			x_center, y_center = centerOfRect(rect)
 			tag = allTags[numberOfCircles - 1]
 			tags.append(tag)
@@ -193,18 +203,25 @@ def moveRobot(direction):
 	up, left, right, middle = direction
 	if not up:
 		print 'Stop'
-		bot.drive_straight(0)
-		bot.turn_clockwise(0)
+		if robotMode:
+			bot.drive_straight(0)
+			bot.turn_clockwise(0)
 	if middle and up:
 		print 'Forward'
-		bot.drive_straight(15)
+		if robotMode:
+			bot.drive_straight(15)
 	if left and up:
 		print 'Turn Left'
-		bot.turn_clockwise(-15)
+		if robotMode:
+			bot.turn_clockwise(-15)
 	if right and up:
 		print 'Turn Right'
-		bot.turn_clockwise(15)
+		if robotMode:
+			bot.turn_clockwise(15)
 
+
+
+# Main loop ###########################################################
 while True:
 	gray, image = recordGrayVideo(video_capture)
 	(screenHeight, screenWidth, channel) = image.shape 
@@ -220,17 +237,23 @@ while True:
 	# move robot according to tag found
 	# if tag is not found, stop the robot
 	# else move to the nearest one
-	if nearestTag == None:
+	# Use last found tag information to drive for five seconds
+	if nearestTag == None and (time.time() - timeFoundLast) < delay:
+		direction = judgePosition(lastTag)
+		moveRobot(direction)
+	elif nearestTag == None:
 		moveRobot([False, False, False, False])
 	else:
+		lastTag = nearestTag
 		direction = judgePosition(nearestTag)
 		moveRobot(direction)
 	# display
 	cv2.imshow("Output", image)
 	if cv2.waitKey(1) & 0xFF == ord('q'):
-		bot.drive_straight(0)
-		bot.turn_clockwise(0)
-		bot.destroy()
+		if robotMode:
+			bot.drive_straight(0)
+			bot.turn_clockwise(0)
+			bot.destroy()
 		break
 
 # When everything is done, release the capture
