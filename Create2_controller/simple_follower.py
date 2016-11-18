@@ -19,6 +19,7 @@ kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
 smallest_area = 10000
 largest_area = 50000
 largestNumberOfCircles = 5
+
 # Dictionary to store (y, x, tagFound) coordinates of each tag
 # initial coordinate is (0,0,False)
 inf = 0
@@ -59,6 +60,14 @@ class Tag:
 		distance = ((self.x - screenWidth/2)**2 + (self.y - screenHeight)**2)**0.5
 		distance = int(round(distance))
 		return distance
+
+# initialize tags
+numberOfTags = 3
+inf = 0 # inf means that tag distance is farthest
+tag1 = Tag(1, inf, inf, "room A", [2, 10], 2, False)
+tag2 = Tag(2, inf, inf, "room B", [5, 10, 5, 10], 3, False)
+tag3 = Tag(3, inf, inf, "room C", [5, 10, 5], 1, False)
+allTags = [tag1, tag2, tag3]
 
 
 def recordGrayVideo(cap):
@@ -106,26 +115,25 @@ def centerOfRect(rect):
 	y = (rect[0] + rect[1]) / 2
 	return x, y
 
-def printTagInfo(numberOfCircles, rect, image):
+def printTagInfo(tag, rect, image):
 	cv2.putText(image, str(numberOfCircles) + ": " + \
-		str(dict[numberOfCircles][0:2]),(rect[2],rect[0]), font, 1,(255,255,255),2)
+		str("(%d, %d)"%(tag.x, tag.y)), (rect[2],rect[0]), font, 1,(255,255,255),2)
 
-def printClosestTag(tag, image):
-	(height, width, channel) = image.shape 
+def printNearestTag(tag):
 	cv2.putText(image, "closest: " + \
-		str(tag),(width/3, height * 5/6), font, 1,(255,0,0),2)
+		str(tag.tagID),(screenWidth/3, screenHeight * 5/6), font, 1,(255,0,0),2)
 
-def printCenter(x, y):
-	 cv2.circle(image, (x, y), 10, (0,0,255), -1)
+def printCenter(tag):
+	 cv2.circle(image, (tag.x, tag.y), 10, (0,0,255), -1)
 
 def drawLine():
-    cv2.line(image,(vertLeft,0),(vertLeft,height),(255,0,0),5)
-    cv2.line(image,(vertRight,0),(vertRight,height),(255,0,0),5)
-    cv2.line(image,(0,bottom),(width,bottom),(255,0,0),5)
-    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.line(image,(vertLeft,0),(vertLeft,screenHeight),(255,0,0),5)
+    cv2.line(image,(vertRight,0),(vertRight,screenHeight),(255,0,0),5)
+    cv2.line(image,(0,bottom),(screenWidth,bottom),(255,0,0),5)
 
-def judgePosition(rect):
-	x, y = centerOfRect(rect)
+def judgePosition(tag):
+	x = tag.x
+	y = tag.y
 	up, left, right, middle = False, False, False, False
 	if y < bottom:
 		up = True
@@ -141,9 +149,15 @@ def judgePosition(rect):
 
 def findTags(img):
 	contours = findContour(gray)
+	# reset all tag information
 	tags = []
 	nearestTag = None
 	xx, yy = 0, 0
+	# all tags are not found yet
+	for i in range(len(allTags)):
+		allTags[i].found = False
+	# arbitrary set min distance from the robot
+	minDistance = screenHeight ** 2 + screenWidth **2
 	for c in contours:
 		approx, area = approximateCnt(c)
 		if len(approx) < 5 and len(approx) > 3 and area > smallest_area and area < largest_area:
@@ -155,21 +169,24 @@ def findTags(img):
 			ROI = getPartImageByRect(rect, gray)
 			keypoints = detector.detect(ROI)
 			numberOfCircles = len(keypoints)
-			font = cv2.FONT_HERSHEY_SIMPLEX		
-			x_center, y_center = centerOfRect(rect)
-			dict[numberOfCircles] = (y_center, x_center, True)
-			closestTag = max(dict.iteritems(), key=operator.itemgetter(1))[0]
-			if numberOfCircles > largestNumberOfCircles:
+			if numberOfCircles > numberOfTags or numberOfCircles == 0:
 				continue
-			printTagInfo(numberOfCircles, rect, image)
-			printClosestTag(closestTag, image)
-			printCenter(x_center, y_center)
-			tags.append([x_center,y_center])
-			# find nearest tag
-			if y_center > yy:
-				yy = y_center
-				nearestTag = rect
-
+			x_center, y_center = centerOfRect(rect)
+			tag = allTags[numberOfCircles - 1]
+			tags.append(tag)
+			# Record tag information
+			tag.found = True
+			tag.x = x_center
+			tag.y = y_center
+			# Find nearest tag
+			distance = tag.distance()
+			if distance < minDistance:
+				minDistance = distance
+				nearestTag = tag
+			# print tag information
+			printTagInfo(tag, rect, image)
+			printNearestTag(nearestTag)
+			printCenter(tag)
 	return tags, nearestTag
 
 def moveRobot(direction):
@@ -190,21 +207,25 @@ def moveRobot(direction):
 
 while True:
 	gray, image = recordGrayVideo(video_capture)
-	(height, width, channel) = image.shape 
-	# needed for determining position of the tag and draw lines on screen
-	vertLeft = width/3
-	vertRight = width*2/3
-	bottom = height*4/5
-	drawLine()
+	(screenHeight, screenWidth, channel) = image.shape 
 	gray = cv2.GaussianBlur(gray, (3, 3), 0)
+	# draw lines on screen
+	vertLeft = screenWidth/3
+	vertRight = screenWidth*2/3
+	bottom = screenHeight*4/5
+	drawLine()
+	# find tags on screen
 	contours = findContour(gray)
 	tags, nearestTag = findTags(gray)
+	# move robot according to tag found
+	# if tag is not found, stop the robot
+	# else move to the nearest one
 	if nearestTag == None:
 		moveRobot([False, False, False, False])
 	else:
 		direction = judgePosition(nearestTag)
 		moveRobot(direction)
-
+	# display
 	cv2.imshow("Output", image)
 	if cv2.waitKey(1) & 0xFF == ord('q'):
 		bot.drive_straight(0)
