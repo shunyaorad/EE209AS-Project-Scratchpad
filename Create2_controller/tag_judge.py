@@ -11,7 +11,7 @@ cntsDrawn = False
 # contour parameter
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
 smallest_area = 10000
-largest_area = 50000
+largest_area = 100000
 largestNumberOfCircles = 5
 # Dictionary to store (y, x, tagFound) coordinates of each tag
 # initial coordinate is (0,0,False)
@@ -89,6 +89,8 @@ def printClosestTag(tag, image):
 	cv2.putText(image, "closest: " + \
 		str(tag),(width/3, height * 5/6), font, 1,(255,0,0),2)
 
+def printCenter(x, y):
+	 cv2.circle(image, (x, y), 10, (0,0,255), -1)
 
 while True:
 	# refresh number of tags in the screen
@@ -98,6 +100,7 @@ while True:
 	gray, image = recordGrayVideo(video_capture)
 	(height, width, channel) = image.shape 
 	gray = cv2.GaussianBlur(gray, (3, 3), 0)
+	#gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
 	contours = findContour(gray)
 
 	for c in contours:
@@ -115,10 +118,11 @@ while True:
 			x_center, y_center = centerOfRect(rect)
 			dict[numberOfCircles] = (y_center, x_center, True)
 			closestTag = max(dict.iteritems(), key=operator.itemgetter(1))[0]
-			printTagInfo(numberOfCircles, rect, image)
-			printClosestTag(closestTag, image)
 			if numberOfCircles > largestNumberOfCircles:
 				continue
+			printTagInfo(numberOfCircles, rect, image)
+			printClosestTag(closestTag, image)
+			printCenter(x_center, y_center)
 			tagsFound[numberOfCircles] = True
 
 	cv2.imshow("Output", image)

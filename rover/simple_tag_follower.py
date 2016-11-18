@@ -1,4 +1,4 @@
-# Judge which tag is closer. Rely on edge detection
+# rover move to the nearest tag
 
 import cv2
 import sys
@@ -92,6 +92,15 @@ def printClosestTag(tag, image):
 def printCenter(x, y):
 	 cv2.circle(image, (x, y), 10, (0,0,255), -1)
 
+def drawLine():
+    vertLeft = width/3
+    vertRight = width*2/3
+    bottom = height*4/5
+    cv2.line(image,(vertLeft,0),(vertLeft,height),(255,0,0),5)
+    cv2.line(image,(vertRight,0),(vertRight,height),(255,0,0),5)
+    cv2.line(image,(0,bottom),(width,bottom),(255,0,0),5)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
 while True:
 	# refresh number of tags in the screen
 	tagsFound = [False, False, False, False, False, False]
@@ -99,12 +108,13 @@ while True:
 
 	gray, image = recordGrayVideo(video_capture)
 	(height, width, channel) = image.shape 
+	drawLine()
 	gray = cv2.GaussianBlur(gray, (3, 3), 0)
 	contours = findContour(gray)
 
 	for c in contours:
 		approx, area = approximateCnt(c)
-		if len(approx) == 4 and area > smallest_area and area < largest_area:
+		if len(approx) < 5 and len(approx) > 3 and area > smallest_area and area < largest_area:
 			firstTime = False
 			lastFoundTime = time.time()
 			lastRects.append(approx)
