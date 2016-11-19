@@ -248,6 +248,7 @@ while True:
 	else:
 		lastTag = nearestTag
 		direction = judgePosition(nearestTag)
+		printNearestTag(nearestTag)
 		moveRobot(direction)
 	# display
 	cv2.imshow("Output", image)

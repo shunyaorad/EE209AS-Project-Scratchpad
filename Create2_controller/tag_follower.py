@@ -86,11 +86,11 @@ def stopRobot(time):
 # Rotate the robot until if finds a tag.
 # Return nearest tag if found tag.
 # Give up exploration after timeToExplore seconds.
-def exploreEnvironment(time, frame):
+def exploreEnvironment(duration, frame):
 	global tagFound
 	start = time.time()
 	while (time.time() - start) < timeToExplore
-		rotateRobot(time)
+		rotateRobot(duration)
 		tagsFound, nearestTag = findTag(frame)
 		if nearestTag != None:
 			return nearestTag
