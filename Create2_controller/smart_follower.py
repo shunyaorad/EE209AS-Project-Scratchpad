@@ -44,6 +44,7 @@ largestNumberOfCircles = 5
 
 # SimpleBlobDetector parameters########################################
 params = cv2.SimpleBlobDetector_Params()
+# TODO: Adjust parameters to make sure detecting circles when distorted
 params.minThreshold = 10
 params.maxThreshold = 100
 params.filterByCircularity = True
@@ -51,7 +52,7 @@ params.minCircularity = 0.8
 params.filterByConvexity = True
 params.minConvexity = 0.9
 params.filterByInertia = True
-params.minInertiaRatio = 0.01
+params.minInertiaRatio = 0.001
 detector = cv2.SimpleBlobDetector(params)
 maxNumberOfcircles = 0
 
@@ -254,14 +255,19 @@ def recordAndShowVideo():
 			bot.drive_straight(0)
 			bot.turn_clockwise(0)
 			bot.destroy()
+		return gray, image
+	return gray, image
 
+# execute instrution specified in the tag.
+# return nextTag object if found during executing instruction
 def executeInstruction(tag):
+	nextTag = None
 	# restore other tags tag.executed condition
 	for i in range(numberOfTags):
 		allTags[i].executed = False
 	# label that instruction from the tag is executed before
 	tag.executed = True
-
+	nextTagID = tag.nextTagNum
 	print "Tag: %d"%(tag.tagID)
 	actions = tag.actions
 	lengthOfAction = len(actions)
@@ -271,64 +277,109 @@ def executeInstruction(tag):
 			duration = actions[i]
 			print "#########rotate %d sec#########"%(duration)
 			if duration >= 0:
-				rotateRobotCW(duration)
+				nextTag = rotateRobotCW(duration, nextTagID)
+				if nextTag != None:
+					break
 			else:
-				rotateRobotCCW(-duration)
+				nextTag = rotateRobotCCW(-duration, nextTagID)
+				if nextTag != None:
+					break
 		# odd entry is time of driving straight
 		else:
 			duration = actions[i]
 			print "#########drive %d sec#########"%(duration)
 			if duration >= 0:
-				driveForward(duration)
+				nextTag = driveForward(duration, nextTagID)
+				if nextTag != None:
+					break
 			else:
-				driveBackward(-duration)
+				nextTag = driveBackward(-duration, nextTagID)
+				if nextTag != None:
+					break
+	return nextTag
 
+# TODO: find tag with the desired ID
+def findOneTag(tagID):
+	return None
+
+# TODO: for all the four functions below, insert a sequence to look for nextTag
+# instructed by the previous tag and once it finds, ends the loop and move toward the nextTag
 # Robot moves forward for specified time
-def driveForward(duration):
+def driveForward(duration, nextTagNum):
 	startTime = time.time()
+	nextTag = None
 	while (time.time() - startTime) < duration:
-		recordAndShowVideo()
+		gray, image = recordAndShowVideo()
 		print "driving forward"
 		if robotMode:
 			bot.drive_straight(15)
+		nextTag = findOneTag(nextTagNum)
+		if nextTag != None:
+			print "*******next tag found!!*******"
+			if robotMode:
+				bot.drive_straight(0)
+			break
 	if robotMode:
 		bot.drive_straight(0)
+	return nextTag
 
 # Robot moves backward for specified time
-def driveBackward(duration):
+def driveBackward(duration, nextTagNum):
+	nextTag = None
 	startTime = time.time()
 	while (time.time() - startTime) < duration:
 		# Display stuff so computer vision works in this loop
-		recordAndShowVideo()
+		gray, image =recordAndShowVideo()
+		nextTag = findOneTag(nextTagNum)
+		if nextTag != None:
+			print "*******next tag found!!*******"
+			if robotMode:
+				bot.drive_straight(0)
+			break
 		print "driving backward"
 		if robotMode:
 			bot.drive_straight(-15)
 	if robotMode:
 		bot.drive_straight(0)
+	return nextTag
 
 # Rotate robot clockwise for specified time
-def rotateRobotCW(duration):
+def rotateRobotCW(duration, nextTagNum):
+	nextTag = None
 	startTime = time.time()
 	while (time.time() - startTime) < duration:
 		# Display stuff so computer vision works in this loop
-		recordAndShowVideo()
+		gray, image =recordAndShowVideo()
+		if nextTag != None:
+			print "*******next tag found!!*******"
+			if robotMode:
+				bot.turn_clockwise(0)
+			break
 		print "Rotating CW"
 		if robotMode:
 			bot.turn_clockwise(15)
 	if robotMode:
 		bot.turn_clockwise(0)
+	return nextTag
 
 # Rotate robot counter clockwise for specified time
-def rotateRobotCCW(duration):
+def rotateRobotCCW(duration, nextTagNum):
+	nextTag = None
 	startTime = time.time()
 	while (time.time() - startTime) < duration:
 		# Display stuff so computer vision works in this loop
-		recordAndShowVideo()
+		gray, image =recordAndShowVideo()
+		if nextTag != None:
+			print "*******next tag found!!*******"
+			if robotMode:
+				bot.turn_clockwise(0)
+			break
 		print "Rotating CCW"
 		if robotMode:
 			bot.turn_clockwise(-15)
 	if robotMode:
 		bot.turn_clockwise(0)
+	return nextTag
 
 def findNearestTag(gray, image):
 	global screenHeight, screenWidth, channel, vertLeft, vertRight, bottom
@@ -377,37 +428,39 @@ while Operation:
 		tagFoundLast = True
 		# lastTag is used to move robot when the tag was found within last delay seconds.
 		lastTag = nearestTag
-		'''
-		TODO:
-		Store nearest to pendingTag. When the robot moves too close and 
-		loses track of nearest tag whose instruction hasn't been executed,
-		it will execute the pendingTag's instruction.
-		'''
+		# pendingTag is used to execute the tag whose instruction was not executed by lost track.
 		pendingTag = nearestTag
 		# Execute the instruction after robot is close enough to the tag
 		if not nearestTag.executed and nearestTag.distance() < 150: 
 			pendingTag = None
-			executeInstruction(nearestTag)
-			continue
-		elif pendingTag != None:
-			executeInstruction(pendingTag)
-			pendingTag = None
+			# TODO: make use of this nextTag
+			nextTag = executeInstruction(nearestTag)
 			continue
 		# move to the nearest tag if not executing instruction
-		else:
-			direction = judgePosition(nearestTag)
-			moveRobot(direction)
-			printNearestTag(nearestTag, image)
+		direction = judgePosition(nearestTag)
+		moveRobot(direction)
+		printNearestTag(nearestTag, image)
+	'''
+	When the robot moves too close and loses track of nearest 
+	tag whose instruction hasn't been executed,
+	it will execute the pendingTag's instruction.
+	'''
+	if nearestTag == None and pendingTag != None and pendingTag.distance() < 150:
+		if not pendingTag.executed:
+			nextTag = executeInstruction(pendingTag)
+			pendingTag = None
+			continue
+		pendingTag = None
 
 	# Did not find tag but last tag was found within delay seconds
-	elif nearestTag == None and (time.time() - timeFoundLast) < delay:
+	if nearestTag == None and (time.time() - timeFoundLast) < delay:
 		direction = judgePosition(lastTag)
 		printNearestTag(lastTag, image)
 		moveRobot(direction)
 
 	# No tag found, robot stops.
 	# TODO: explore the surrounding
-	else:
+	if nearestTag == None and (time.time() - timeFoundLast) > delay:
 		tagFoundLast = False
 		moveRobot([False, False, False, False])
 

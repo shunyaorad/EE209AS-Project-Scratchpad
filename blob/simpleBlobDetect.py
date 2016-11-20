@@ -9,26 +9,16 @@ video_capture = cv2.VideoCapture(0)
 
 # Setup SimpleBlobDetector parameters.
 params = cv2.SimpleBlobDetector_Params()
-
-# Change thresholds
 params.minThreshold = 10
-params.maxThreshold = 40
-
-# Filter by Area.
-# params.filterByArea = True
-# params.minArea = 1500
-
-# Filter by Circularity
+params.maxThreshold = 100
 params.filterByCircularity = True
-params.minCircularity = 0.7
-
-#Filter by Convexity
-# params.filterByConvexity = True
-# params.minConvexity = 0.9
-    
-# Filter by Inertia
+params.minCircularity = 0.8
+params.filterByConvexity = True
+params.minConvexity = 0.9
 params.filterByInertia = True
-params.minInertiaRatio = 0.01
+params.minInertiaRatio = 0.001
+detector = cv2.SimpleBlobDetector(params)
+maxNumberOfcircles = 0
 
 # Create a detector with the parameters
 ver = (cv2.__version__).split('.')
