@@ -109,8 +109,8 @@ class SerialCommandInterface(object):
     def __init__(self):
         com = '/dev/ttyUSB0'  #This should not be hard coded...
         #com = '/dev/tty.usbserial-DA01NMCI'
-        #baud = 115200
-        baud = 19200
+        baud = 115200
+        #baud = 19200
 
         self.ser = serial.Serial()
         self.ser.port = com

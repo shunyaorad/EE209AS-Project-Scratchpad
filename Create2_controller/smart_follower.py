@@ -1,3 +1,6 @@
+# Author: Shun Yao
+# Email: shunyaorad@gmail.com
+
 # create2 extracts and executes instruction from each tag
 
 import cv2
@@ -80,6 +83,7 @@ tag3 = Tag(3, inf, inf, "room C", [5, 0], 4, False, False)
 tag4 = Tag(4, inf, inf, "room D", [5, 0, 5], 1, False, False)
 allTags = [tag1, tag2, tag3, tag4]
 numberOfTags = len(allTags)
+pendingTag = None
 
 # tag record algorithm parameters ########################################
 timeFoundLast = 0
@@ -145,7 +149,7 @@ def centerOfRect(rect):
 
 def printTagInfo(tag, rect, image):
 	cv2.putText(image, str(tag.tagID) + ": " + \
-		str("(%d, %d)"%(tag.x, tag.y)), (rect[2],rect[0]), font, 1,(255,255,255),2)
+		"Distance: %d"%(tag.distance()), (rect[2],rect[0]), font, 1,(255,255,255),2)
 
 def printNearestTag(tag, image):
 	cv2.putText(image, "closest: " + \
@@ -251,11 +255,13 @@ def recordAndShowVideo():
 			bot.turn_clockwise(0)
 			bot.destroy()
 
-# TODO: Label the tag so that it doesnt extract the same instruction
-# consecutively multiple times
 def executeInstruction(tag):
+	# restore other tags tag.executed condition
+	for i in range(numberOfTags):
+		allTags[i].executed = False
 	# label that instruction from the tag is executed before
 	tag.executed = True
+
 	print "Tag: %d"%(tag.tagID)
 	actions = tag.actions
 	lengthOfAction = len(actions)
@@ -263,7 +269,7 @@ def executeInstruction(tag):
 		# even entry is time of rotation
 		if i % 2 == 0:
 			duration = actions[i]
-			print "rotate %d sec"%(duration)
+			print "#########rotate %d sec#########"%(duration)
 			if duration >= 0:
 				rotateRobotCW(duration)
 			else:
@@ -271,7 +277,7 @@ def executeInstruction(tag):
 		# odd entry is time of driving straight
 		else:
 			duration = actions[i]
-			print "drive %d sec"%(duration)
+			print "#########drive %d sec#########"%(duration)
 			if duration >= 0:
 				driveForward(duration)
 			else:
@@ -355,11 +361,8 @@ def moveTo(targetTag, image):
 
 	cv2.imshow("Output", image)
 
-
 # Main loop ###########################################################
 while Operation:
-
-	# Find nearest tag to follow if there is no instruction from last tag
 	gray, image = recordGrayVideo(cap)
 	tags, nearestTag = findNearestTag(gray, image)
 	drawLine(image)
@@ -372,22 +375,36 @@ while Operation:
 	# Found tag
 	if nearestTag != None:
 		tagFoundLast = True
+		# lastTag is used to move robot when the tag was found within last delay seconds.
 		lastTag = nearestTag
-		# Move robot to the tag
-		# moveTo(nearestTag)
+		'''
+		TODO:
+		Store nearest to pendingTag. When the robot moves too close and 
+		loses track of nearest tag whose instruction hasn't been executed,
+		it will execute the pendingTag's instruction.
+		'''
+		pendingTag = nearestTag
 		# Execute the instruction after robot is close enough to the tag
-		if not nearestTag.executed: 
+		if not nearestTag.executed and nearestTag.distance() < 150: 
+			pendingTag = None
 			executeInstruction(nearestTag)
+			continue
+		elif pendingTag != None:
+			executeInstruction(pendingTag)
+			pendingTag = None
+			continue
 		# move to the nearest tag if not executing instruction
-		direction = judgePosition(nearestTag)
-		moveRobot(direction)
-		printNearestTag(nearestTag, image)
+		else:
+			direction = judgePosition(nearestTag)
+			moveRobot(direction)
+			printNearestTag(nearestTag, image)
 
 	# Did not find tag but last tag was found within delay seconds
 	elif nearestTag == None and (time.time() - timeFoundLast) < delay:
 		direction = judgePosition(lastTag)
 		printNearestTag(lastTag, image)
 		moveRobot(direction)
+
 	# No tag found, robot stops.
 	# TODO: explore the surrounding
 	else:
