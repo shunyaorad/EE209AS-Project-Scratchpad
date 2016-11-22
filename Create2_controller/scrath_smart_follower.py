@@ -1,7 +1,7 @@
 # Author: Shun Yao
 # Email: shunyaorad@gmail.com
 
-# create2 extracts and executes instruction from each tag
+# This is mainly used for experimentation. Not running purpose.
 
 import cv2
 import sys
@@ -230,7 +230,7 @@ def findTags(gray, image):
 			printTagInfo(tag, rect, image)
 			printNearestTag(_nearestTag, image)
 			printCenter(tag, image)
-	return tags, _nearestTag
+	return tags, _nearestTag, image
 
 # drive robot based on position of the tag
 def moveRobot(direction):
@@ -293,7 +293,7 @@ def executeInstruction(tag):
 					break
 	return nextTag
 
-# TODO: modified the function so that it will take array as input. ie. [1,3,4]
+# TODOL modified the function so that it will take array as input. ie. [1,3,4]
 # if only one tagID is givien, ie [3], it will only look for that particiular ID
 # if an array of tagID is given, ie [1,3,4], it will look for these IDs and return
 # if one of them is found.
@@ -308,7 +308,6 @@ def findOneTag(tagID):
 	# Print target tag info
 	cv2.putText(image, "Target: " + \
 	str(tagID),(screenHeight/2, screenWidth/2), font, 1,(255,0,255),3)
-	print "**********FindOneTag***********"
 	for c in contours:
 		approx, area = approximateCnt(c)
 		# find rectangle
@@ -344,7 +343,7 @@ def findOneTag(tagID):
 					"Target found!",(screenHeight/2, screenWidth/2), font, 1,(255,0,255),3)
                 targetTag = tag
                 cv2.imshow("Output", image)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+				if cv2.waitKey(1) & 0xFF == ord('q'):
 					Operation = False
                 break
 
@@ -454,8 +453,8 @@ def findNearestTag(gray, image):
 	vertRight = screenWidth*2/3
 	bottom = screenHeight*4/5
 	# find tags on screen
-	tags, nearestTag = findTags(gray, image)
-	return tags, nearestTag
+	tags, nearestTag, image = findTags(gray, image)
+	return tags, nearestTag, image
 
 # Move robot to desired tag
 def moveTo(targetTag, image):
@@ -481,7 +480,6 @@ def moveTo(targetTag, image):
 def explore(timeOfExploration):
 	start = time.time()
 	while (time.time() - start) < timeOfExploration:
-		print "********* EXPLORATION ***************"
 		nextTag = rotateRobotCW(timeOfExploration, [1,2,3,4])
 		if nextTag != None:
 			print "########## Tag Found By Exploration ##############"
@@ -525,7 +523,6 @@ while Operation:
 	'''
 	# TODO: check if the following code is valid. Not sure if I checked correctly.
 	if nearestTag == None and pendingTag != None and pendingTag.distance() < 150:
-		print "******* PENDING TAG *******************"
 		if not pendingTag.executed:
 			nearestTag = executeInstruction(pendingTag)
 			printNearestTag(nearestTag, image)
@@ -536,23 +533,16 @@ while Operation:
 
 	# Did not find tag but last tag was found within delay seconds
 	if nearestTag == None and (time.time() - timeFoundLast) < delay:
-		print "********** DELAY OPERATION *****************"
 		direction = judgePosition(lastTag)
 		printNearestTag(lastTag, image)
 		moveRobot(direction)
-		displayVideo(image)
-		continue
 
 	# No tag found. stop robot for timeToExploration seconds.
 	if nearestTag == None and (time.time() - timeFoundLast) < timeToExploration:
-		print "********** WAIT FOR EXPLORATION ***************"
 		nearestTag = stopRobot(timeToExploration)
 		if nearestTag != None:
 			direction = judgePosition(nearestTag)
 			moveRobot(direction)
-			continue
-		else:
-			continue
 
 	# TODO: ask for command if it will explore the surrounding for specified time.
 	if nearestTag == None and (time.time() - timeFoundLast) > timeToExploration:
@@ -563,7 +553,6 @@ while Operation:
 			if nearestTag != None:
 				direction = judgePosition(nearestTag)
 				moveRobot(direction)
-				continue
 		else:
 			print "############ No exploration! Give up! ###############"
 			if robotMode:
