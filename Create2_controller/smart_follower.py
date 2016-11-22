@@ -100,17 +100,19 @@ def recordGrayVideo(cap):
 	return gray, frame
 
 def displayVideo(image):
-	cv2.imshow("Output", image)
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		if robotMode:
-			bot.drive_straight(0)
-			bot.turn_clockwise(0)
-			bot.destroy()
-		cap.release()
-		cv2.destroyAllWindows()
+    global Operation
+    cv2.imshow("Output", image)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        Operation = False
+        if robotMode:
+            bot.drive_straight(0)
+            bot.turn_clockwise(0)
+            bot.destroy()
+    cap.release()
+    cv2.destroyAllWindows()
 
 def getRectByPoints(points):
-    # prepare simple array 
+    # prepare simple array
     points = list(map(lambda x: x[0], points))
 
     points = sorted(points, key=lambda x:x[1])
@@ -186,6 +188,7 @@ def judgePosition(tag):
 		right = True
 	return [up, left, right, middle]
 
+# Return array of tags found and nearest tag
 def findTags(gray, image):
 	global timeFoundLast
 	contours = findContour(gray)
@@ -229,6 +232,7 @@ def findTags(gray, image):
 			printCenter(tag, image)
 	return tags, _nearestTag
 
+# drive robot based on position of the tag
 def moveRobot(direction):
 	up, left, right, middle = direction
 	if not up:
@@ -248,21 +252,6 @@ def moveRobot(direction):
 		print 'Turn Right'
 		if robotMode:
 			bot.turn_clockwise(15)
-
-def recordAndShowVideo():
-	global Operation
-	gray, image = recordGrayVideo(cap)
-	findNearestTag(gray,image)
-	drawLine(image)
-	cv2.imshow("Output", image)
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		Operation = False
-		if robotMode:
-			bot.drive_straight(0)
-			bot.turn_clockwise(0)
-			bot.destroy()
-		return gray, image
-	return gray, image
 
 # execute instrution specified in the tag.
 # return nextTag object if found during executing instruction
@@ -343,7 +332,7 @@ def findOneTag(tagID):
 			# TODO: Indicator when the robot finds the next tag
 			# It's not working maybe because when the robot finds next tag it breaks out of the
 			# loop immediately
-			print "found tag: %d"%(tag.tagID)
+			print "FindOneTag: Found tag: %d"%(tag.tagID)
 			print tagID
 			if tag.tagID in tagID:
 				timeFoundLast = time.time()
@@ -351,7 +340,7 @@ def findOneTag(tagID):
 					"Distance: %d"%(tag.distance()), (rect[2],rect[0]), font, 1,(255,0,255),3)
 				cv2.putText(image, str(tag.tagID) + ": " + \
 					"Target found!",(screenHeight/2, screenWidth/2), font, 1,(255,0,255),3)
-				targetTag = tag
+                targetTag = tag
 				break
 				# TODO: not working for explore()
 
@@ -470,7 +459,7 @@ def moveTo(targetTag, image):
 	'''
 	while targetTag.distance() > distance_th or tag.found == True:
 		# Record video so that computer vision works in this loop
-		 
+
 		tags, nearestTag = findTags(gray, image)
 		direction = judgePosition(targetTag)
 		moveRobot(direction)
@@ -512,18 +501,18 @@ while Operation:
 		# pendingTag is used to execute the tag whose instruction was not executed by lost track.
 		pendingTag = nearestTag
 		# Execute the instruction after robot is close enough to the tag
-		if not nearestTag.executed and nearestTag.distance() < 150: 
+		if not nearestTag.executed and nearestTag.distance() < 150:
 			pendingTag = None
 			# while executing instruction, look for next target tag.
 			# After finding next tag, move toward the next tag.
 			nearestTag = executeInstruction(nearestTag)
-			# TODO: Do i need continue here? Without continue, it will give error. I forgot why. 
+			# TODO: Do i need continue here? Without continue, it will give error. I forgot why.
 		# move to the nearest tag if not executing instruction
 		printNearestTag(nearestTag, image)
 		direction = judgePosition(nearestTag)
 		moveRobot(direction)
 	'''
-	When the robot moves too close and loses track of nearest 
+	When the robot moves too close and loses track of nearest
 	tag whose instruction hasn't been executed,
 	it will execute the pendingTag's instruction.
 	'''
@@ -568,15 +557,9 @@ while Operation:
 			Operation = False
 			break
 
-	# display
-	cv2.imshow("Output", image)
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		if robotMode:
-			bot.drive_straight(0)
-			bot.turn_clockwise(0)
-			bot.destroy()
-		break
+    # Display
+    displayVideo(image)
 
 # When everything is done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+# cap.release()
+# cv2.destroyAllWindows()
