@@ -1,7 +1,8 @@
 # Author: Shun Yao
 # Email: shunyaorad@gmail.com
 
-# create2 extracts and executes instruction from each tag
+# create2 extracts and executes instruction from each tag.
+# Enter robot operatio mode with argument robot. ie. python intelligent_follower.py robot
 
 import cv2
 import sys
@@ -14,11 +15,12 @@ cap = cv2.VideoCapture(0)
 Operation = True # Run the program while True
 cntsDrawn = False
 font = cv2.FONT_HERSHEY_SIMPLEX
-screenHeight = 500
-screenWidth = 500
+screenHeight = 480
+screenWidth = 640
 vertLeft = screenWidth/3
 vertRight = screenWidth*2/3
-bottom = screenHeight*4/5
+# bottom = screenHeight*5/6
+bottom = screenHeight - 50
 # connect to robot##########################################
 # on command line, if command is robot, connect to robot.
 # otherwise debug mode without robot connection
@@ -80,18 +82,18 @@ class Tag:
 
 # initialize tags
 inf = 0 # inf means that tag distance is farthest
-tag1 = Tag(1, inf, inf, "room A", [3, 3], 2, False, False)
-tag2 = Tag(2, inf, inf, "room B", [3, 3], 3, False, False)
-tag3 = Tag(3, inf, inf, "room C", [3, 3], 4, False, False)
-tag4 = Tag(4, inf, inf, "room D", [3, 0, 3], 1, False, False)
+tag1 = Tag(1, inf, inf, "room A", [4.1, 15], 2, False, False)
+tag2 = Tag(2, inf, inf, "room B", [4.1, 15], 3, False, False)
+tag3 = Tag(3, inf, inf, "room C", [4.1, 15], 4, False, False)
+tag4 = Tag(4, inf, inf, "room D", [4.1, 15], 1, False, False)
 allTags = [tag1, tag2, tag3, tag4]
 numberOfTags = len(allTags)
 pendingTag = None
 
 # tag record algorithm parameters ########################################
 timeFoundLast = 0
-delay = 0.5
-distance_th = 100
+delay = 0.3
+distance_th = 120
 
 ##########################################################################
 def terminateProgram():
@@ -185,6 +187,8 @@ def judgePosition(tag):
 	x = tag.x
 	y = tag.y
 	up, left, right, middle = False, False, False, False
+	# TODO: determine bottom condition. Currently there is a case if tag y position is lower than bottom 
+	# thus it stops and it does not execute instruction.
 	if y < bottom:
 		up = True
 	else:
@@ -205,7 +209,7 @@ def findNearestTag(gray, image):
 	# draw lines on screen
 	vertLeft = screenWidth/3
 	vertRight = screenWidth*2/3
-	bottom = screenHeight*4/5
+	bottom = screenHeight-50
 	# find tags on screen
 	tags, nearestTag = findTags(gray, image)
 	return tags, nearestTag
@@ -485,8 +489,8 @@ def explore(timeOfExploration):
 	start = time.time()
 	while (time.time() - start) < timeOfExploration:
 		print "********* EXPLORATION ***************"
-		nextTag = rotateRobotCW(timeOfExploration/2, [1,2,3,4])
-		nextTag = driveForward(timeOfExploration/2, [1,2,3,4])
+		#nextTag = rotateRobotCW(timeOfExploration/5, [1,2,3,4]) # rotate 2 sec
+		nextTag = driveForward(timeOfExploration, [1,2,3,4]) # drive 5 sec
 		if nextTag != None:
 			print "########## Tag Found By Exploration ##############"
 			break
@@ -512,7 +516,7 @@ while Operation:
 		# pendingTag is used to execute the tag whose instruction was not executed by lost track.
 		pendingTag = nearestTag
 		# Execute the instruction after robot is close enough to the tag
-		if not nearestTag.executed and nearestTag.distance() < 150:
+		if not nearestTag.executed and nearestTag.distance() < distance_th:
 			print "******* Executing Instruction *******************"
 			pendingTag = None
 			# while executing instruction, look for next target tag.
@@ -523,12 +527,14 @@ while Operation:
 		printNearestTag(nearestTag, image)
 		direction = judgePosition(nearestTag)
 		moveRobot(direction)
+
+	displayVideo(image)
 	'''
 	When the robot moves too close and loses track of nearest
 	tag whose instruction hasn't been executed,
 	it will execute the pendingTag's instruction.
 	'''
-	if nearestTag == None and pendingTag != None and pendingTag.distance() < 150:
+	if nearestTag == None and pendingTag != None and pendingTag.distance() < distance_th:
 		print "******* PENDING TAG *******************"
 		if not pendingTag.executed:
 			print "******* Executing Instruction *******************"
@@ -545,19 +551,28 @@ while Operation:
 		direction = judgePosition(lastTag)
 		printNearestTag(lastTag, image)
 		moveRobot(direction)
+		nearestTag = stopRobot(0.5)
 		displayVideo(image)
 		continue
 
 	# No tag found. stop robot for timeToExploration seconds.
-	if nearestTag == None and (time.time() - timeFoundLast) < timeToExploration:
+	if nearestTag == None and (time.time() - timeFoundLast) > (5 * delay) and (time.time() - timeFoundLast) < timeToExploration:
 		print "********** WAIT FOR EXPLORATION ***************"
-		nearestTag = stopRobot(timeToExploration)
-		if nearestTag != None:
+		# TODO: last minute change to the control flow when the robot has not executed but came too close and lost the tag
+		if lastTag != None:
+			nearestTag = executeInstruction(lastTag)
+			printNearestTag(nearestTag, image)
 			direction = judgePosition(nearestTag)
 			moveRobot(direction)
-			continue
-		else:
-			continue
+			continue	
+		else: 
+			nearestTag = stopRobot(timeToExploration)
+			if nearestTag != None:
+				direction = judgePosition(nearestTag)
+				moveRobot(direction)
+				continue
+			else:
+				continue
 
 	# TODO: ask for command if it will explore the surrounding for specified time.
 	if nearestTag == None and (time.time() - timeFoundLast) > timeToExploration:
@@ -580,4 +595,3 @@ while Operation:
 				cv2.destroyAllWindows()
 			Operation = False
 			break
-	displayVideo(image)
