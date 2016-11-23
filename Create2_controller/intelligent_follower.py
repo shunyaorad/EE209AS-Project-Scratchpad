@@ -1,8 +1,7 @@
 # Author: Shun Yao
 # Email: shunyaorad@gmail.com
 
-# create2 extracts and executes instruction from each tag.
-# Final version of the EE209AS project. Tag follower.
+# create2 extracts and executes instruction from each tag
 
 import cv2
 import sys
@@ -37,7 +36,7 @@ if robotMode:
 	bot.start()
 	bot.safe()
 
-timeOfExploration = 5
+timeOfExploration = 10
 timeToExploration = 10
 # contour parameter####################################################
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
@@ -81,21 +80,29 @@ class Tag:
 
 # initialize tags
 inf = 0 # inf means that tag distance is farthest
-tag1 = Tag(1, inf, inf, "room A", [5, 5], 2, False, False)
-tag2 = Tag(2, inf, inf, "room B", [5, 5], 3, False, False)
-tag3 = Tag(3, inf, inf, "room C", [5, 5], 4, False, False)
-tag4 = Tag(4, inf, inf, "room D", [5, 0, 5], 1, False, False)
+tag1 = Tag(1, inf, inf, "room A", [3, 3], 2, False, False)
+tag2 = Tag(2, inf, inf, "room B", [3, 3], 3, False, False)
+tag3 = Tag(3, inf, inf, "room C", [3, 3], 4, False, False)
+tag4 = Tag(4, inf, inf, "room D", [3, 0, 3], 1, False, False)
 allTags = [tag1, tag2, tag3, tag4]
 numberOfTags = len(allTags)
 pendingTag = None
-lastTag = None
 
 # tag record algorithm parameters ########################################
 timeFoundLast = 0
-delay = 1
+delay = 0.5
 distance_th = 100
 
 ##########################################################################
+def terminateProgram():
+    if robotMode:
+        bot.drive_straight(0)
+        bot.turn_clockwise(0)
+        bot.destroy()
+    cap.release()
+    cv2.destroyAllWindows()
+    sys.exit()
+
 def recordGrayVideo(cap):
 	ret, frame = cap.read()
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -106,12 +113,7 @@ def displayVideo(image):
     cv2.imshow("Output", image)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         Operation = False
-        if robotMode:
-            bot.drive_straight(0)
-            bot.turn_clockwise(0)
-            bot.destroy()
-	    cap.release()
-	    cv2.destroyAllWindows()
+        terminateProgram()
 
 def getRectByPoints(points):
     # prepare simple array
@@ -171,6 +173,11 @@ def drawLine(image):
     cv2.line(image,(vertRight,0),(vertRight,screenHeight),(255,0,0),5)
     cv2.line(image,(0,bottom),(screenWidth,bottom),(255,0,0),5)
 
+# Print on screen remaining time for the operation
+def countDown(startTime, duration, image):
+	cv2.putText(image, "Time Remaining: " + \
+		str(duration - int(time.time() - startTime)),(screenWidth/4, screenHeight/5), font, 1,(255,0,255),3)
+
 def judgePosition(tag):
 	if tag == None:
 		return [False, False, False, False]
@@ -189,6 +196,19 @@ def judgePosition(tag):
 	elif x > vertRight:
 		right = True
 	return [up, left, right, middle]
+
+# Return tags and nearest tag found in image
+def findNearestTag(gray, image):
+	global screenHeight, screenWidth, channel, vertLeft, vertRight, bottom
+	(screenHeight, screenWidth, channel) = image.shape
+	gray = cv2.GaussianBlur(gray, (3, 3), 0)
+	# draw lines on screen
+	vertLeft = screenWidth/3
+	vertRight = screenWidth*2/3
+	bottom = screenHeight*4/5
+	# find tags on screen
+	tags, nearestTag = findTags(gray, image)
+	return tags, nearestTag
 
 # Return array of tags found and nearest tag
 def findTags(gray, image):
@@ -233,6 +253,52 @@ def findTags(gray, image):
 			printNearestTag(_nearestTag, image)
 			printCenter(tag, image)
 	return tags, _nearestTag
+
+# return target tags with specified tagID 
+def findTagsSpecified(tagID, gray, image):
+	global timeFoundLast
+	drawLine(image)
+	# Print target tag info
+	cv2.putText(image, "Target: " + \
+		str(tagID),(screenHeight/3, screenHeight*4/5), font, 1,(255,0,255),3)
+	contours = findContour(gray)
+	# reset all tag information
+	tags = []
+	targetTag = None
+	xx, yy = 0, 0
+	# all tags are not found yet
+	for i in range(len(allTags)):
+		allTags[i].found = False
+	# arbitrary set min distance from the robot
+	minDistance = screenHeight ** 2 + screenWidth **2
+	for c in contours:
+		approx, area = approximateCnt(c)
+		# find rectangle
+		if len(approx) == 4 and area > smallest_area and area < largest_area:
+			# draw contours around the rectangle
+			cv2.drawContours(image, [approx], -1, (0, 255, 0), 4)
+			rect = getRectByPoints(approx)
+			ROI = getPartImageByRect(rect, gray)
+			keypoints = detector.detect(ROI)
+			numberOfCircles = len(keypoints)
+			if numberOfCircles > numberOfTags or numberOfCircles == 0:
+				continue
+			timeFoundLast = time.time()
+			x_center, y_center = centerOfRect(rect)
+			tag = allTags[numberOfCircles - 1]
+			tags.append(tag)
+			# Record tag information
+			tag.found = True
+			tag.x = x_center
+			tag.y = y_center
+			# print tag information
+			printTagInfo(tag, rect, image)
+			printCenter(tag, image)
+			if tag.tagID in tagID:
+				print "***** Target: " + str(tagID) + " Found: %d"%(tag.tagID)
+				targetTag = tag
+	return tags, targetTag
+
 
 # drive robot based on position of the tag
 def moveRobot(direction):
@@ -295,69 +361,19 @@ def executeInstruction(tag):
 					break
 	return nextTag
 
-# TODOL modified the function so that it will take array as input. ie. [1,3,4]
-# if only one tagID is givien, ie [3], it will only look for that particiular ID
-# if an array of tagID is given, ie [1,3,4], it will look for these IDs and return
-# if one of them is found.
-def findOneTag(tagID):
-	global Operation, screenHeight, screenWidth, timeFoundLast
-	tag = None
-	gray, image = recordGrayVideo(cap)
-	gray = cv2.GaussianBlur(gray, (3, 3), 0)
-	drawLine(image)
-	targetTag = None
-	contours = findContour(gray)
-	# Print target tag info
-	cv2.putText(image, "Target: " + \
-	str(tagID),(screenHeight/2, screenWidth/2), font, 1,(255,0,255),3)
-	for c in contours:
-		approx, area = approximateCnt(c)
-		# find rectangle
-		if len(approx) == 4 and area > smallest_area and area < largest_area:
-			# draw contours around the rectangle
-			cv2.drawContours(image, [approx], -1, (0, 255, 0), 4)
-			rect = getRectByPoints(approx)
-			ROI = getPartImageByRect(rect, gray)
-			keypoints = detector.detect(ROI)
-			numberOfCircles = len(keypoints)
-			if numberOfCircles > numberOfTags or numberOfCircles == 0:
-				continue
-			x_center, y_center = centerOfRect(rect)
-			tag = allTags[numberOfCircles - 1]
-			tags.append(tag)
-			# Record tag information
-			tag.found = True
-			tag.x = x_center
-			tag.y = y_center
-			# print target tag information
-			printTagInfo(tag, rect, image)
-			printCenter(tag, image)
-			# TODO: Indicator when the robot finds the next tag
-			# It's not working maybe because when the robot finds next tag it breaks out of the
-			# loop immediately
-			print "FindOneTag: Found tag: %d"%(tag.tagID)
-			print tagID
-			if tag.tagID in tagID:
-				timeFoundLast = time.time()
-				cv2.putText(image, str(tag.tagID) + ": " + \
-					"Distance: %d"%(tag.distance()), (rect[2],rect[0]), font, 1,(255,0,255),3)
-				cv2.putText(image, str(tag.tagID) + ": " + \
-					"Target found!",(screenHeight/2, screenWidth/2), font, 1,(255,0,255),3)
-                targetTag = tag
-                break
-				# TODO: not working for explore()
-
-	cv2.imshow("Output", image)
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		Operation = False
-	return targetTag
-
 # Robot moves forward for specified time
 def driveForward(duration, nextTagNum):
+	global Operation
 	startTime = time.time()
 	nextTag = None
 	while (time.time() - startTime) < duration:
-		nextTag = findOneTag(nextTagNum)
+		gray, image = recordGrayVideo(cap)
+		tags, nextTag = findTagsSpecified(nextTagNum, gray, image)
+		countDown(startTime, duration, image)
+		cv2.imshow("Output", image)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			Operation = False
+			terminateProgram()
 		if nextTag != None:
 			print "*******next tag found!!*******"
 			if robotMode:
@@ -372,10 +388,17 @@ def driveForward(duration, nextTagNum):
 
 # Robot moves backward for specified time
 def driveBackward(duration, nextTagNum):
+	global Operation
 	nextTag = None
 	startTime = time.time()
 	while (time.time() - startTime) < duration:
-		nextTag = findOneTag(nextTagNum)
+		gray, image = recordGrayVideo(cap)
+		tags, nextTag = findTagsSpecified(nextTagNum, gray, image)
+		countDown(startTime, duration, image)
+		cv2.imshow("Output", image)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			Operation = False
+			terminateProgram()
 		if nextTag != None:
 			print "*******next tag found!!*******"
 			if robotMode:
@@ -390,10 +413,18 @@ def driveBackward(duration, nextTagNum):
 
 # Rotate robot clockwise for specified time
 def rotateRobotCW(duration, nextTagNum):
+	global Operation
 	nextTag = None
 	startTime = time.time()
+	i = 0
 	while (time.time() - startTime) < duration:
-		nextTag = findOneTag(nextTagNum)
+		gray, image = recordGrayVideo(cap)
+		tags, nextTag = findTagsSpecified(nextTagNum, gray, image)
+		countDown(startTime, duration, image)
+		cv2.imshow("Output", image)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			Operation = False
+			terminateProgram()
 		if nextTag != None:
 			print "*******next tag found!!*******"
 			if robotMode:
@@ -408,11 +439,17 @@ def rotateRobotCW(duration, nextTagNum):
 
 # Rotate robot counter clockwise for specified time
 def rotateRobotCCW(duration, nextTagNum):
+	global Operation
 	nextTag = None
 	startTime = time.time()
 	while (time.time() - startTime) < duration:
-		gray = cv2.GaussianBlur(gray, (3, 3), 0)
-		nextTag = findOneTag(nextTagNum)
+		gray, image = recordGrayVideo(cap)
+		tags, nextTag = findTagsSpecified(nextTagNum, gray, image)
+		cv2.imshow("Output", image)
+		countDown(startTime, duration, image)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			Operation = False
+			terminateProgram()
 		if nextTag != None:
 			print "*******next tag found!!*******"
 			if robotMode:
@@ -434,51 +471,22 @@ def stopRobot(duration):
 	while (time.time() - startTime) < duration:
 		moveRobot([False, False, False, False])
 		gray, image = recordGrayVideo(cap)
-		tags, nearestTag = findNearestTag(gray, image)
+		tags, nearestTag = findTagsSpecified([1,2,3,4], gray, image)
 		drawLine(image)
 		printNearestTag(nearestTag, image)
+		countDown(startTime, duration, image)
 		displayVideo(image)
 		if nearestTag != None:
 			break
 	return nearestTag
 
-def findNearestTag(gray, image):
-	global screenHeight, screenWidth, channel, vertLeft, vertRight, bottom
-	(screenHeight, screenWidth, channel) = image.shape
-	gray = cv2.GaussianBlur(gray, (3, 3), 0)
-	# draw lines on screen
-	vertLeft = screenWidth/3
-	vertRight = screenWidth*2/3
-	bottom = screenHeight*4/5
-	# find tags on screen
-	tags, nearestTag = findTags(gray, image)
-	return tags, nearestTag
-
-# Move robot to desired tag
-def moveTo(targetTag, image):
-	'''
-	If the robot is still far away from tag or still can see the tag,
-	the robot moves closer toward the tag
-	'''
-	while targetTag.distance() > distance_th or tag.found == True:
-		# Record video so that computer vision works in this loop
-		tags, nearestTag = findTags(gray, image)
-		direction = judgePosition(targetTag)
-		moveRobot(direction)
-		#drawLine(image)
-		printNearestTag(targetTag, image)
-		moveRobot(direction)
-		# TODO: Justify the following function
-		displayVideo(image)
-
-	cv2.imshow("Output", image)
-
 # Explore the environment for specified time.
 def explore(timeOfExploration):
 	start = time.time()
 	while (time.time() - start) < timeOfExploration:
-		print "********** EXPLORATION *****************"
-		nextTag = rotateRobotCW(timeOfExploration, [1,2,3,4])
+		print "********* EXPLORATION ***************"
+		nextTag = rotateRobotCW(timeOfExploration/2, [1,2,3,4])
+		nextTag = driveForward(timeOfExploration/2, [1,2,3,4])
 		if nextTag != None:
 			print "########## Tag Found By Exploration ##############"
 			break
@@ -488,7 +496,7 @@ def explore(timeOfExploration):
 # Main loop ###########################################################
 while Operation:
 	gray, image = recordGrayVideo(cap)
-	tags, nearestTag, image = findNearestTag(gray, image)
+	tags, nearestTag = findNearestTag(gray, image)
 	drawLine(image)
 	'''
 	move robot according to tag found.
@@ -505,51 +513,50 @@ while Operation:
 		pendingTag = nearestTag
 		# Execute the instruction after robot is close enough to the tag
 		if not nearestTag.executed and nearestTag.distance() < 150:
+			print "******* Executing Instruction *******************"
 			pendingTag = None
 			# while executing instruction, look for next target tag.
 			# After finding next tag, move toward the next tag.
 			nearestTag = executeInstruction(nearestTag)
-			
+			# TODO: Do i need continue here? Without continue, it will give error. I forgot why.
 		# move to the nearest tag if not executing instruction
-		if nearestTag.executed:
-			printNearestTag(nearestTag, image)
-			direction = judgePosition(nearestTag)
-			moveRobot(direction)
-			displayVideo(image)
-		displayVide(image)
+		printNearestTag(nearestTag, image)
+		direction = judgePosition(nearestTag)
+		moveRobot(direction)
 	'''
 	When the robot moves too close and loses track of nearest
 	tag whose instruction hasn't been executed,
 	it will execute the pendingTag's instruction.
 	'''
-	# TODO: check if the following code is valid. Not sure if I checked correctly.
 	if nearestTag == None and pendingTag != None and pendingTag.distance() < 150:
+		print "******* PENDING TAG *******************"
 		if not pendingTag.executed:
-			# Video is displayed during executeInstruction
+			print "******* Executing Instruction *******************"
 			nearestTag = executeInstruction(pendingTag)
 			printNearestTag(nearestTag, image)
 			pendingTag = None
 			direction = judgePosition(nearestTag)
 			moveRobot(direction)
 		pendingTag = None
-		# continue to skip displayVideo(image) at the very end of this loop
-		continue
 
 	# Did not find tag but last tag was found within delay seconds
-	if nearestTag == None and lastTag != None and (time.time() - timeFoundLast) < delay:
+	if nearestTag == None and (time.time() - timeFoundLast) < delay:
+		print "********** DELAY OPERATION *****************"
 		direction = judgePosition(lastTag)
 		printNearestTag(lastTag, image)
 		moveRobot(direction)
-		lastTag = None
-		# video is not displayed so that use the displayVideo(image) at the end of this loop
+		displayVideo(image)
+		continue
 
 	# No tag found. stop robot for timeToExploration seconds.
 	if nearestTag == None and (time.time() - timeFoundLast) < timeToExploration:
+		print "********** WAIT FOR EXPLORATION ***************"
 		nearestTag = stopRobot(timeToExploration)
 		if nearestTag != None:
 			direction = judgePosition(nearestTag)
 			moveRobot(direction)
-			# video is displayed during stopRobot() so continue to skip displayVideo at the end of this loop
+			continue
+		else:
 			continue
 
 	# TODO: ask for command if it will explore the surrounding for specified time.
@@ -558,22 +565,19 @@ while Operation:
 		cmd = raw_input("Tag not found. Explore the surrounding? (y/n)")
 		if cmd == 'y':
 			nearestTag = explore(timeOfExploration)
+			lastTag = nearestTag
 			if nearestTag != None:
 				direction = judgePosition(nearestTag)
 				moveRobot(direction)
-			# video is displayed during explore, so continue to skip displayVideo() at the end of this loop
-			continue 
-
+				continue
 		else:
 			print "############ No exploration! Give up! ###############"
 			if robotMode:
 				bot.drive_straight(0)
 				bot.turn_clockwise(0)
 				bot.destroy()
+				cap.release()
+				cv2.destroyAllWindows()
 			Operation = False
 			break
-	#displayVideo(image)
-
-# When everything is done, release the capture
-# cap.release()
-# cv2.destroyAllWindows()
+	displayVideo(image)
