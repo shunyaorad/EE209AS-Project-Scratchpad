@@ -199,12 +199,6 @@ def judgePosition(tag):
 		right = True
 	return [up, left, right, middle]
 
-def judgeMiddle(tag):
-	if tag.x < vertRight and tag.x > vertLeft:
-		return True
-	else:
-		return False
-
 # Return tags and nearest tag found in image
 def findNearestTag(gray, image):
 	global screenHeight, screenWidth, channel, vertLeft, vertRight, bottom
@@ -520,7 +514,7 @@ while Operation:
 		# pendingTag is used to execute the tag whose instruction was not executed by lost track.
 		pendingTag = nearestTag
 		# Execute the instruction after robot is close enough to the tag
-		if not nearestTag.executed and nearestTag.distance() < distance_th and judgeMiddle(nearestTag):
+		if not nearestTag.executed and nearestTag.distance() < distance_th:
 			print "******* Executing Instruction *******************"
 			pendingTag = None
 			# while executing instruction, look for next target tag.
@@ -536,7 +530,7 @@ while Operation:
 	tag whose instruction hasn't been executed,
 	it will execute the pendingTag's instruction.
 	'''
-	elif nearestTag == None and pendingTag != None and pendingTag.distance() < 120 and judgeMiddle(nearestTag):
+	if nearestTag == None and pendingTag != None and pendingTag.distance() < 120:
 		print "******* PENDING TAG *******************"
 		if not pendingTag.executed:
 			print "******* Executing Instruction *******************"
@@ -564,7 +558,7 @@ while Operation:
 	elif nearestTag == None and (time.time() - timeFoundLast) > (5 * delay) and (time.time() - timeFoundLast) < timeToExploration:
 		print "********** WAIT FOR EXPLORATION ***************"
 		# TODO: last minute change to the control flow when the robot has not executed but came too close and lost the tag
-		if lastTag != None and judgeMiddle(lastTag):
+		if lastTag != None:
 			nearestTag = executeInstruction(lastTag)
 			printNearestTag(nearestTag, image)
 			direction = judgePosition(nearestTag)
