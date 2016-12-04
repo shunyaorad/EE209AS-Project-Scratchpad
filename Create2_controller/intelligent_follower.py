@@ -531,12 +531,15 @@ while Operation:
 		direction = judgePosition(nearestTag)
 		moveRobot(direction)
 
+	displayVideo(image)
+	continue
+
 	'''
 	When the robot moves too close and loses track of nearest
 	tag whose instruction hasn't been executed,
 	it will execute the pendingTag's instruction.
 	'''
-	elif nearestTag == None and pendingTag != None and pendingTag.distance() < 120 and judgeMiddle(nearestTag):
+	if nearestTag == None and pendingTag != None and pendingTag.distance() < distance_th and judgeMiddle(nearestTag):
 		print "******* PENDING TAG *******************"
 		if not pendingTag.executed:
 			print "******* Executing Instruction *******************"
@@ -546,9 +549,10 @@ while Operation:
 			direction = judgePosition(nearestTag)
 			moveRobot(direction)
 		pendingTag = None
+		continue
 
 	# Did not find tag but last tag was found within delay seconds
-	elif nearestTag == None and (time.time() - timeFoundLast) < delay:
+	if nearestTag == None and (time.time() - timeFoundLast) < delay:
 		print "********** DELAY OPERATION *****************"
 		direction = judgePosition(lastTag)
 		printNearestTag(lastTag, image)
@@ -561,7 +565,7 @@ while Operation:
 		continue
 
 	# No tag found. stop robot for timeToExploration seconds.
-	elif nearestTag == None and (time.time() - timeFoundLast) > (5 * delay) and (time.time() - timeFoundLast) < timeToExploration:
+	if nearestTag == None and (time.time() - timeFoundLast) > (5 * delay) and (time.time() - timeFoundLast) < timeToExploration:
 		print "********** WAIT FOR EXPLORATION ***************"
 		# TODO: last minute change to the control flow when the robot has not executed but came too close and lost the tag
 		if lastTag != None and judgeMiddle(lastTag):
@@ -579,7 +583,7 @@ while Operation:
 			else:
 				continue
 
-	elif nearestTag == None and (time.time() - timeFoundLast) > timeToExploration:
+	if nearestTag == None and (time.time() - timeFoundLast) > timeToExploration:
 		stopRobot(0)
 		cmd = raw_input("Tag not found. Explore the surrounding? (y/n)")
 		if cmd == 'y':
@@ -599,5 +603,3 @@ while Operation:
 				cv2.destroyAllWindows()
 			Operation = False
 			break
-
-	displayVideo(image)
