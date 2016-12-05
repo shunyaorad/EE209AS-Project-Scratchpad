@@ -532,7 +532,6 @@ while Operation:
 		moveRobot(direction)
 
 	displayVideo(image)
-	continue
 
 	'''
 	When the robot moves too close and loses track of nearest
